@@ -5,9 +5,9 @@ Markdown PDF support CJK(Chinese, Japanese, and Korean) languages.
 
 ## Features
 
-![](./assets/sample/sample-en.jpg)
+![sample-en](assets/sample/sample-en.jpg)
 
-![](./assets/sample/sample-zh.jpg)
+![sample-zh](assets/sample/sample-zh.jpg)
 
 ## Requirements
 
@@ -36,6 +36,9 @@ This extension contributes the following settings:
 
 Initial release of with one basic command to convert markdown files to pdf.
 
+### 0.0.2
+
+fix readme file images that does not display
 <!-- ### 1.0.1
 
 Fixed issue #.
