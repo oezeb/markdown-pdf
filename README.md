@@ -5,9 +5,7 @@ Markdown PDF support CJK(Chinese, Japanese, and Korean) languages.
 
 ## Features
 
-![sample-en](assets/sample/sample-en.jpg)
-
-![sample-zh](assets/sample/sample-zh.jpg)
+![sample-en](assets/sample/sample.jpg)
 
 ## Requirements
 
@@ -39,6 +37,10 @@ Initial release of with one basic command to convert markdown files to pdf.
 ### 0.0.2
 
 fix readme file images that does not display
+
+### 0.0.3
+
+Added feature: Can add a header to the output file (title, authors and date) 
 <!-- ### 1.0.1
 
 Fixed issue #.

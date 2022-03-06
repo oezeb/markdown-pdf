@@ -2,7 +2,7 @@
   "name": "markdown-to-pdf",
   "displayName": "Markdown To PDF",
   "description": "Convert Markdown to PDF",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "oezeb",
   "repository": {
     "type": "git",
@@ -21,14 +21,21 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:markdown-to-pdf.MdToPdf"
+    "onCommand:markdown-to-pdf.MdToPdf",
+    "onCommand:markdown-to-pdf.AddTitle"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
         "command": "markdown-to-pdf.MdToPdf",
-        "title": "Markdown To PDF: Md To Pdf"
+        "category": "Markdown To PDF",
+        "title": "Md To Pdf"
+      },
+      {
+        "command": "markdown-to-pdf.AddTitle",
+        "category": "Markdown To PDF",
+        "title": "Add Title, Authors and Date to the document"
       }
     ]
   },
