@@ -1,51 +1,135 @@
 import * as vscode from 'vscode';
 import path = require('path');
-const { promisify } = require('util');
-const execFile = promisify(require('child_process').execFile);
 
-const pyscript = path.join(__dirname, './Pandoc-md-to-pdf.py');
+const yaml = require('js-yaml');
+const fs = require('fs');
+
+var terminal: vscode.Terminal | undefined = undefined;
+var output = vscode.window.createOutputChannel('Markdow to PDF');
+
+const defaultData: {[id: string]: any} = {
+	'CJKmainfont': 'KaiTi',
+	'urlcolor': 'NavyBlue',
+	'toccolor': 'Red',
+	'geometry': ['top=2cm', 'bottom=1.5cm', 'left=2cm', 'right=2cm'],
+	'header-includes': [
+		'\\usepackage{xeCJK}', 
+		'\\xeCJKsetup{CJKmath=true}',
+		'\\definecolor{bgcolor}{HTML}{F0F0F0}',
+		'\\let\\oldtexttt\\texttt',  //change background color for inline code
+		'\\renewcommand{\\texttt}[1]{\\colorbox{bgcolor}{\\oldtexttt{#1}}}'
+	]
+};
 
 // convert currently active .md file file to .pdf
-function convertMdToPdf(title='', authors:string[]=[], date='') {
-	const output = vscode.window.createOutputChannel('Markdow PDF - Output');
+async function convertMdToPdf(param?: {title?: string, authors?: string[], date?: string, toc?: boolean, defolt?: boolean}) {
+	if(!terminal || terminal.exitStatus) { terminal = vscode.window.createTerminal('Markdow to PDF'); }
+	output.clear();
 	output.show();
-	vscode.window.withProgress({
-		cancellable: false,
-		location: vscode.ProgressLocation.Notification,
-		title: 'Converting Markdown to PDF',
-	  }, async (_) => {
-		if(vscode.window.activeTextEditor) {
-			let filename = vscode.window.activeTextEditor.document.fileName;
-			if(filename.match('.+\\.md')) {
-				output.appendLine('Converting ' + filename + ' to PDF');
+	
+	if(vscode.window.activeTextEditor) {
+		let filename = vscode.window.activeTextEditor.document.fileName;
 
-				filename = filename.split('\\').join('\\\\');
-				try {
-					let res = await execFile('python', [pyscript, filename, title, '['+authors.toString()+']', date], {cwd: path.dirname(filename)});
-					console.log(res);
-					
-					if(res.stdout) {
-						output.appendLine(res.stdout);
-					}
-					if(res.stderr) {
-						output.appendLine(res.stderr);
-					}
-					else {
-						output.appendLine('Conversion Successful');
-					}
-				} catch (error: any) {
-					console.log(error);
+		output.appendLine('file: ' + filename);
+		
+		if(filename.match('.+\\.md')) {
+			let outputfile = filename.replace(path.extname(filename), '.pdf');
+			let yamlfile = path.join(path.dirname(filename), 'metadata.yaml');
+
+			try {
+				let data: {[id: string]: any} = {};
+				output.appendLine('Building metadata...');
+				if(param?.defolt) {
+					Object.assign(data, defaultData);
 				}
+				else {
+					if(fs.existsSync(yamlfile)) {
+						output.appendLine('Getting existing metadata from ' + yamlfile);
+					}
+					Object.assign(data, defaultData, ...yaml.loadAll(fs.readFileSync(yamlfile)));
+				}
+				if(param?.title) { data['title'] = param.title; }
+				if(param?.authors) { data['author'] = param.authors; }
+				if(param?.date) {
+					if(param.date === '#today') { param.date = new Date().toLocaleDateString(); }
+					data['date'] = param.date;
+				}
+
+				output.appendLine('Writing metadata into ' + yamlfile);
+				fs.writeFileSync(yamlfile, '---\n' + yaml.dump(data) + '---\n');
 			}
-			else {
-				output.appendLine('File Type Error - support only Markdown .md files');
+			catch (err: any) {
+				console.log(err);
+				output.appendLine('Error while loading yaml file');
+				let ans = await vscode.window.showErrorMessage('Error while loading yaml file - set default configuration ?', 'Yes', 'No');
+				if(ans === 'Yes') {
+					output.appendLine('Retry using extension\'s default metadata');
+					output.appendLine('Writing metadata into ' + yamlfile);
+					fs.writeFileSync(yamlfile, '---\n' + yaml.dump(defaultData) + '---\n');
+				}
+				else {
+					return;
+				}	
 			}
+			
+			// set pdf engine to xelatex which support unicode characters
+			let command = 'pandoc --pdf-engine=xelatex ';
+			// Add highlight to block code (run `pandoc --list-highlight-styles` to list all available themes)
+			command += '--highlight-style tango ';
+			// add TOC(table of contents) 
+			if(param?.toc) { command += '--toc -N '; }
+			// input file
+			command += filename + ' ' ;
+			// add yaml file wich contains title, author and date
+			command += yamlfile + ' ' ;
+			// output file
+			command += '-o ' + outputfile + ' ';
+
+			output.appendLine('Running Pandoc command...');
+			terminal.sendText(command);
+			output.appendLine('output file will be at ' + outputfile + ' :)');
 		}
 		else {
-			output.appendLine('No editor is active');
+			let msg = 'File Type Error - support only Markdown .md files';
+			vscode.window.showErrorMessage(msg);
+			output.appendLine(msg);
 		}
+	}
+	else {
+		let msg = 'No editor is active';
+		vscode.window.showErrorMessage(msg);
+		output.appendLine(msg);
+	}
+}
 
-	  });
+async function getTitleAuthorAndDate() {
+	let title = await vscode.window.showInputBox({
+		placeHolder: "title",
+		prompt: "add title, author and date to output file"
+	});
+	
+	let authors: string[] = [];
+	while(true) {
+		let pHolder: string = "author " + (authors.length+1);
+		let currAuthor = await vscode.window.showInputBox({
+			placeHolder: pHolder,
+			prompt: "leave empty to stop authors listing"
+		});
+		
+		if(currAuthor) {
+			authors.push(currAuthor);
+		}
+		else {
+			break;
+		}
+	}
+
+	let date = await vscode.window.showInputBox({
+		placeHolder: 'date',
+		value: '#today',
+		prompt: "Enter `#today` for current date"
+	});
+	return {'title':	title, 'authors': authors, 'date': date};
 }
 
 // this method is called when your extension is activated
@@ -58,39 +142,28 @@ export function activate(context: vscode.ExtensionContext) {
 		return convertMdToPdf();
 	});
 
-	let addTitle = vscode.commands.registerCommand('markdown-to-pdf.AddTitle', async () => {
-		let title = await vscode.window.showInputBox({
-			placeHolder: "title",
-			prompt: "add title, author and date to output file"
-		});
-		
-		let authors: string[] = [];
-		while(true) {
-			let pHolder: string = "author " + (authors.length+1);
-			let currAuthor = await vscode.window.showInputBox({
-				placeHolder: pHolder,
-				prompt: "leave empty to stop authors listing"
-			});
-			
-			if(currAuthor) {
-				authors.push('"'+currAuthor+'"');
-			}
-			else {
-				break;
-			}
-		}
-
-		let date = await vscode.window.showInputBox({
-			placeHolder: 'date',
-			value: '#today',
-			prompt: "Enter `#today` for current date"
-		});
-
-		return convertMdToPdf(title, authors, date);
+	let defolt = vscode.commands.registerCommand('markdown-to-pdf.Default', () => {
+		return convertMdToPdf({defolt: true});
 	});
 
+	let addTitle = vscode.commands.registerCommand('markdown-to-pdf.AddTitle', async () => {
+		return convertMdToPdf(await getTitleAuthorAndDate());
+	});
+
+	let addToc = vscode.commands.registerCommand('markdown-to-pdf.AddToc', () => {
+		return convertMdToPdf({toc: true});
+	});
+
+	let addTitleAndToc = vscode.commands.registerCommand('markdown-to-pdf.AddTitleAndToc', async () => {
+		return convertMdToPdf({...await getTitleAuthorAndDate(), toc: true});
+	});
+
+
 	context.subscriptions.push(mdToPdf);
+	context.subscriptions.push(defolt);
 	context.subscriptions.push(addTitle);
+	context.subscriptions.push(addToc);
+	context.subscriptions.push(addTitleAndToc);
 }
 
 // this method is called when your extension is deactivated

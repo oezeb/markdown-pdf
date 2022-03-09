@@ -2,7 +2,7 @@
   "name": "markdown-to-pdf",
   "displayName": "Markdown To PDF",
   "description": "Convert Markdown to PDF",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "publisher": "oezeb",
   "repository": {
     "type": "git",
@@ -22,7 +22,10 @@
   ],
   "activationEvents": [
     "onCommand:markdown-to-pdf.MdToPdf",
-    "onCommand:markdown-to-pdf.AddTitle"
+    "onCommand:markdown-to-pdf.Default",
+    "onCommand:markdown-to-pdf.AddTitle",
+    "onCommand:markdown-to-pdf.AddToc",
+    "onCommand:markdown-to-pdf.AddTitleAndToc"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -30,12 +33,27 @@
       {
         "command": "markdown-to-pdf.MdToPdf",
         "category": "Markdown To PDF",
-        "title": "Md To Pdf"
+        "title": "Generate (will merge with template if any!!!)"
+      },
+      {
+        "command": "markdown-to-pdf.Default",
+        "category": "Markdown To PDF",
+        "title": "Use default template"
       },
       {
         "command": "markdown-to-pdf.AddTitle",
         "category": "Markdown To PDF",
         "title": "Add Title, Authors and Date to the document"
+      },
+      {
+        "command": "markdown-to-pdf.AddToc",
+        "category": "Markdown To PDF",
+        "title": "Add Table of Contents to the document"
+      },
+      {
+        "command": "markdown-to-pdf.AddTitleAndToc",
+        "category": "Markdown To PDF",
+        "title": "Add Title, Authors, Date and  Table of Contents to the document"
       }
     ]
   },
@@ -61,6 +79,6 @@
     "typescript": "^4.5.5"
   },
   "dependencies": {
-    "yaml": "2.0.0-10"
+    "js-yaml": "^4.1.0"
   }
 }
