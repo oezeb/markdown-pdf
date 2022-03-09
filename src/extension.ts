@@ -22,7 +22,7 @@ const defaultData: {[id: string]: any} = {
 };
 
 // convert currently active .md file file to .pdf
-async function convertMdToPdf(param?: {title?: string, authors?: string[], date?: string, toc?: boolean, defolt?: boolean}) {
+async function convertMdToPdf(param?: {title?: string, authors?: string[], date?: string, toc?: boolean, custom?: boolean}) {
 	if(!terminal || terminal.exitStatus) { terminal = vscode.window.createTerminal('Markdow to PDF'); }
 	output.clear();
 	output.show();
@@ -39,15 +39,15 @@ async function convertMdToPdf(param?: {title?: string, authors?: string[], date?
 			try {
 				let data: {[id: string]: any} = {};
 				output.appendLine('Building metadata...');
-				if(param?.defolt) {
-					Object.assign(data, defaultData);
-				}
-				else {
-					if(fs.existsSync(yamlfile)) {
-						output.appendLine('Getting existing metadata from ' + yamlfile);
-					}
+				
+				if(fs.existsSync(yamlfile) && param?.custom) {
+					output.appendLine('Getting existing metadata from ' + yamlfile);
 					Object.assign(data, defaultData, ...yaml.loadAll(fs.readFileSync(yamlfile)));
 				}
+				else {
+					Object.assign(data, defaultData);
+				}
+				
 				if(param?.title) { data['title'] = param.title; }
 				if(param?.authors) { data['author'] = param.authors; }
 				if(param?.date) {
@@ -139,11 +139,11 @@ export function activate(context: vscode.ExtensionContext) {
 	// Now provide the implementation of the command with registerCommand
 	// The commandId parameter must match the command field in package.json
 	let mdToPdf = vscode.commands.registerCommand('markdown-to-pdf.MdToPdf', () => {
-		return convertMdToPdf();
+		return convertMdToPdf({custom: true});
 	});
 
 	let defolt = vscode.commands.registerCommand('markdown-to-pdf.Default', () => {
-		return convertMdToPdf({defolt: true});
+		return convertMdToPdf();
 	});
 
 	let addTitle = vscode.commands.registerCommand('markdown-to-pdf.AddTitle', async () => {

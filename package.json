@@ -2,7 +2,7 @@
   "name": "markdown-to-pdf",
   "displayName": "Markdown To PDF",
   "description": "Convert Markdown to PDF",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "publisher": "oezeb",
   "repository": {
     "type": "git",

@@ -6,7 +6,7 @@ The extension create `YAML metadata file`(metadata.yaml) where it list the basic
 
 ## Features
 
-See [sample](assets/sample.pdf)
+See [sample](https://github.com/oezeb/markdown-pdf/tree/main/assets/sample.pdf)
 
 The extension include 5 commands:
 
