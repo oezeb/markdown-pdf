@@ -24,7 +24,7 @@ The extension include 5 commands:
 + `Add Title, Authors, Date and  Table of Contents to the document`. This command also merge user's updates made in the YAML file.
 
 See [samples](https://github.com/oezeb/markdown-pdf/tree/main/samples)
-![cutie](https://github.com/oezeb/markdown-pdf/tree/main/samples/sample-1.png)
+![cutie](https://raw.githubusercontent.com/oezeb/markdown-pdf/main/samples/sample-1.png)
 
 ## Release Notes
 
