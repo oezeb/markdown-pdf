@@ -1,8 +1,21 @@
+/**
+Given a Markdown(.md) file, convert it into PDF(.pdf) file using
+
+Prerequisite:
+    - Install latest pandoc(https://github.com/jgm/pandoc/releases) and add to System environment PATH variable
+    - Install laTEX using TEX Live(https://www.tug.org/texlive/) or MiKETeX(https://miktex.org/)
+    - Install a text editor like VS Code(https://code.visualstudio.com/)
+
+
+References: 
+    - https://jdhao.github.io/2019/05/30/markdown2pdf_pandoc/
+ */
 import * as vscode from 'vscode';
 import path = require('path');
 
 const yaml = require('js-yaml');
 const fs = require('fs');
+const cp = require('child_process');
 
 const defaultData: {[id: string]: any} = {
 	'CJKmainfont': 'KaiTi',
@@ -63,16 +76,11 @@ function getMetaData(
 
 // convert currently active .md file file to .pdf
 async function convertMdToPdf(param: {
-	terminal: vscode.Terminal,
 	output: vscode.OutputChannel,
 	title?: string, authors?: string[], date?: string, 
 	toc?: boolean, 
 	custom?: boolean
 }) {
-	if(param.terminal.exitStatus) { 
-		param.terminal = vscode.window.createTerminal('Markdow to PDF'); 
-	}
-	
 	param.output.clear();
 	param.output.show();
 	
@@ -95,8 +103,13 @@ async function convertMdToPdf(param: {
 				let command = shellcommand(filename, outputfile, yamlfile, param.toc);
 
 				param.output.appendLine('Running Pandoc command...');
-				param.terminal.sendText(command);
 				param.output.appendLine('output file will be at ' + outputfile + ' :)');
+				try {
+					cp.execSync(command);
+					param.output.appendLine('Successfull');
+				} catch(e) {
+					param.output.appendLine('Error: ' + String(e));
+				}
 			}
 			catch (err: any) {
 				console.log(err);
@@ -104,7 +117,7 @@ async function convertMdToPdf(param: {
 				let ans = await vscode.window.showErrorMessage('Error while loading yaml file - set default configuration ?', 'Yes', 'No');
 				if(ans === 'Yes') {
 					param.output.appendLine('Retry using extension\'s default metadata');
-					await convertMdToPdf({terminal: param.terminal, output: param.output, toc: param.toc, custom: false});
+					await convertMdToPdf({output: param.output, toc: param.toc, custom: false});
 				}	
 			}
 		}
@@ -161,23 +174,23 @@ export function activate(context: vscode.ExtensionContext) {
 	// Now provide the implementation of the command with registerCommand
 	// The commandId parameter must match the command field in package.json
 	let mdToPdf = vscode.commands.registerCommand('markdown-to-pdf.MdToPdf', () => {
-		return convertMdToPdf({terminal: terminal, output: output, custom: true});
+		return convertMdToPdf({output: output, custom: true});
 	});
 
 	let defolt = vscode.commands.registerCommand('markdown-to-pdf.Default', () => {
-		return convertMdToPdf({terminal: terminal, output: output});
+		return convertMdToPdf({output: output});
 	});
 
 	let addTitle = vscode.commands.registerCommand('markdown-to-pdf.AddTitle', async () => {
-		return convertMdToPdf({terminal: terminal, output: output, ...await getTitleAuthorAndDate()});
+		return convertMdToPdf({output: output, ...await getTitleAuthorAndDate()});
 	});
 
 	let addToc = vscode.commands.registerCommand('markdown-to-pdf.AddToc', () => {
-		return convertMdToPdf({terminal: terminal, output: output, toc: true});
+		return convertMdToPdf({output: output, toc: true});
 	});
 
 	let addTitleAndToc = vscode.commands.registerCommand('markdown-to-pdf.AddTitleAndToc', async () => {
-		return convertMdToPdf({terminal: terminal, output: output, ...await getTitleAuthorAndDate(), toc: true});
+		return convertMdToPdf({output: output, ...await getTitleAuthorAndDate(), toc: true});
 	});
 
 
