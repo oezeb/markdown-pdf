@@ -4,9 +4,6 @@ import path = require('path');
 const yaml = require('js-yaml');
 const fs = require('fs');
 
-var terminal: vscode.Terminal | undefined = undefined;
-var output = vscode.window.createOutputChannel('Markdow to PDF');
-
 const defaultData: {[id: string]: any} = {
 	'CJKmainfont': 'KaiTi',
 	'urlcolor': 'NavyBlue',
@@ -21,84 +18,106 @@ const defaultData: {[id: string]: any} = {
 	]
 };
 
+const shellcommand = (inputfile: string, outputfile: string, yamlfile: string, toc?: boolean) => {
+	// set pdf engine to xelatex which support unicode characters
+	var command = 'pandoc --pdf-engine=xelatex ';
+	// Add highlight to block code (run `pandoc --list-highlight-styles` to list all available themes)
+	command += '--highlight-style tango ';
+	// add TOC(table of contents) 
+	if(toc) { command += '--toc -N '; }
+	// input file
+	command += inputfile + ' ' ;
+	// add yaml file wich contains title, author and date
+	command += yamlfile + ' ' ;
+	// output file
+	command += '-o ' + outputfile + ' ';
+
+	return command;
+};
+
+function getMetaData(
+	output: vscode.OutputChannel,
+	yamlfile: string, custom?: boolean, title?: string, authors?: string[], date?: string): {[id: string]: any} {
+	let data: {[id: string]: any} = {};
+	output.appendLine('Building metadata...');
+	
+	if(fs.existsSync(yamlfile) && custom) {
+		output.appendLine('Getting existing metadata from ' + yamlfile);
+		Object.assign(data, defaultData, ...yaml.loadAll(fs.readFileSync(yamlfile)));
+	}
+	else {
+		Object.assign(data, defaultData);
+	}
+
+	if(title) { data['title'] = title; }
+	if(authors) { data['author'] = authors; }
+	if(date) {
+		if(date === '#today') { 
+			date = new Date().toLocaleDateString(); 
+		}
+		data['date'] = date;
+	}
+
+	return data;
+}
+
 // convert currently active .md file file to .pdf
-async function convertMdToPdf(param?: {title?: string, authors?: string[], date?: string, toc?: boolean, custom?: boolean}) {
-	if(!terminal || terminal.exitStatus) { terminal = vscode.window.createTerminal('Markdow to PDF'); }
-	output.clear();
-	output.show();
+async function convertMdToPdf(param: {
+	terminal: vscode.Terminal,
+	output: vscode.OutputChannel,
+	title?: string, authors?: string[], date?: string, 
+	toc?: boolean, 
+	custom?: boolean
+}) {
+	if(param.terminal.exitStatus) { 
+		param.terminal = vscode.window.createTerminal('Markdow to PDF'); 
+	}
+	
+	param.output.clear();
+	param.output.show();
 	
 	if(vscode.window.activeTextEditor) {
 		let filename = vscode.window.activeTextEditor.document.fileName;
 
-		output.appendLine('file: ' + filename);
+		param.output.appendLine('file: ' + filename);
 		
 		if(filename.match('.+\\.md')) {
 			let outputfile = filename.replace(path.extname(filename), '.pdf');
 			let yamlfile = path.join(path.dirname(filename), 'metadata.yaml');
 
 			try {
-				let data: {[id: string]: any} = {};
-				output.appendLine('Building metadata...');
-				
-				if(fs.existsSync(yamlfile) && param?.custom) {
-					output.appendLine('Getting existing metadata from ' + yamlfile);
-					Object.assign(data, defaultData, ...yaml.loadAll(fs.readFileSync(yamlfile)));
-				}
-				else {
-					Object.assign(data, defaultData);
-				}
-				
-				if(param?.title) { data['title'] = param.title; }
-				if(param?.authors) { data['author'] = param.authors; }
-				if(param?.date) {
-					if(param.date === '#today') { param.date = new Date().toLocaleDateString(); }
-					data['date'] = param.date;
-				}
+				let data: {[id: string]: any} = getMetaData(param.output, yamlfile, param.custom);
 
-				output.appendLine('Writing metadata into ' + yamlfile);
+				param.output.appendLine('Writing metadata into ' + yamlfile);
 				fs.writeFileSync(yamlfile, '---\n' + yaml.dump(data) + '---\n');
+
+				
+				let command = shellcommand(filename, outputfile, yamlfile, param.toc);
+
+				param.output.appendLine('Running Pandoc command...');
+				param.terminal.sendText(command);
+				param.output.appendLine('output file will be at ' + outputfile + ' :)');
 			}
 			catch (err: any) {
 				console.log(err);
-				output.appendLine('Error while loading yaml file');
+				param.output.appendLine('Error while loading yaml file');
 				let ans = await vscode.window.showErrorMessage('Error while loading yaml file - set default configuration ?', 'Yes', 'No');
 				if(ans === 'Yes') {
-					output.appendLine('Retry using extension\'s default metadata');
-					output.appendLine('Writing metadata into ' + yamlfile);
-					fs.writeFileSync(yamlfile, '---\n' + yaml.dump(defaultData) + '---\n');
-				}
-				else {
-					return;
+					param.output.appendLine('Retry using extension\'s default metadata');
+					await convertMdToPdf({terminal: param.terminal, output: param.output, toc: param.toc, custom: false});
 				}	
 			}
-			
-			// set pdf engine to xelatex which support unicode characters
-			let command = 'pandoc --pdf-engine=xelatex ';
-			// Add highlight to block code (run `pandoc --list-highlight-styles` to list all available themes)
-			command += '--highlight-style tango ';
-			// add TOC(table of contents) 
-			if(param?.toc) { command += '--toc -N '; }
-			// input file
-			command += filename + ' ' ;
-			// add yaml file wich contains title, author and date
-			command += yamlfile + ' ' ;
-			// output file
-			command += '-o ' + outputfile + ' ';
-
-			output.appendLine('Running Pandoc command...');
-			terminal.sendText(command);
-			output.appendLine('output file will be at ' + outputfile + ' :)');
 		}
 		else {
 			let msg = 'File Type Error - support only Markdown .md files';
 			vscode.window.showErrorMessage(msg);
-			output.appendLine(msg);
+			param.output.appendLine(msg);
 		}
 	}
 	else {
 		let msg = 'No editor is active';
 		vscode.window.showErrorMessage(msg);
-		output.appendLine(msg);
+		param.output.appendLine(msg);
 	}
 }
 
@@ -135,27 +154,30 @@ async function getTitleAuthorAndDate() {
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
+	var terminal = vscode.window.createTerminal('Markdow to PDF');
+	var output = vscode.window.createOutputChannel('Markdow to PDF');
+
 	// The command has been defined in the package.json file
 	// Now provide the implementation of the command with registerCommand
 	// The commandId parameter must match the command field in package.json
 	let mdToPdf = vscode.commands.registerCommand('markdown-to-pdf.MdToPdf', () => {
-		return convertMdToPdf({custom: true});
+		return convertMdToPdf({terminal: terminal, output: output, custom: true});
 	});
 
 	let defolt = vscode.commands.registerCommand('markdown-to-pdf.Default', () => {
-		return convertMdToPdf();
+		return convertMdToPdf({terminal: terminal, output: output});
 	});
 
 	let addTitle = vscode.commands.registerCommand('markdown-to-pdf.AddTitle', async () => {
-		return convertMdToPdf(await getTitleAuthorAndDate());
+		return convertMdToPdf({terminal: terminal, output: output, ...await getTitleAuthorAndDate()});
 	});
 
 	let addToc = vscode.commands.registerCommand('markdown-to-pdf.AddToc', () => {
-		return convertMdToPdf({toc: true});
+		return convertMdToPdf({terminal: terminal, output: output, toc: true});
 	});
 
 	let addTitleAndToc = vscode.commands.registerCommand('markdown-to-pdf.AddTitleAndToc', async () => {
-		return convertMdToPdf({...await getTitleAuthorAndDate(), toc: true});
+		return convertMdToPdf({terminal: terminal, output: output, ...await getTitleAuthorAndDate(), toc: true});
 	});
 
 
@@ -167,4 +189,8 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 // this method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() {
+	/**
+	 * Nothing yet to do
+	 */
+}
