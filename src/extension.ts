@@ -105,7 +105,7 @@ async function convertMdToPdf(param: {
 				param.output.appendLine('Running Pandoc command...');
 				param.output.appendLine('output file will be at ' + outputfile + ' :)');
 				try {
-					cp.execSync(command);
+					cp.execSync(command, {cwd: path.dirname(filename)});
 					param.output.appendLine('Successfull');
 				} catch(e) {
 					param.output.appendLine('Error: ' + String(e));

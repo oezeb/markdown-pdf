@@ -4,9 +4,12 @@ Markdown PDF help convert Markdown files into PDF using [pandoc](https://pandoc.
 
 The extension create `YAML metadata file`(metadata.yaml) where it list the basics of the template that [pandoc](https://pandoc.org/) will be using. The YAML file can be edited by the user to fit his needs.
 
-## Features
+## Requirements
 
-See [sample](https://github.com/oezeb/markdown-pdf/tree/main/assets/sample.pdf)
+- Install latest [pandoc](https://github.com/jgm/pandoc/releases) and add to System environment PATH variable
+- Install LaTEX using [TEX Live](https://www.tug.org/texlive/) or [MiKETeX](https://miktex.org/)
+
+## Features
 
 The extension include 5 commands:
 
@@ -18,15 +21,11 @@ The extension include 5 commands:
 
 + `Add Table of Contents to the document`. This command also merge user's updates made in the YAML file.
 
-+ `Add Title, Authors, Date and  Table of Contents to the document`. This command also merge user's updates made in the YAML file.s
++ `Add Title, Authors, Date and  Table of Contents to the document`. This command also merge user's updates made in the YAML file.
 
-## Requirements
-
-- Install latest [pandoc](https://github.com/jgm/pandoc/releases) and add to System environment PATH variable
-- Install LaTEX using [TEX Live](https://www.tug.org/texlive/) or [MiKETeX](https://miktex.org/)
+See [samples](https://github.com/oezeb/markdown-pdf/tree/main/assets)
+![](assets/sample-1.png)
 
 ## Release Notes
 
 ### 0.0.4 Added and modified commands. Now a total of 5 commands available.
-
-
